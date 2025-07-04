@@ -237,12 +237,12 @@ export const budgetCalculatorTool = new DynamicTool({
 // 날씨 정보 도구 (Google Weather API 사용)
 export const travelWeatherTool = new DynamicTool({
   name: 'travel_weather',
-  description: '여행지의 날씨 정보를 제공합니다. 도시 이름을 입력하세요.',
+  description: '여행지의 날씨 정보를 제공합니다. 도시 이름을 입력하세요. (한국 도시는 영어로 입력: Seoul, Busan, Jeju 등)',
   func: async (input: string) => {
     const city = input.trim();
     
     if (!city) {
-      return '도시 이름을 입력해주세요! (예: "서울" 또는 "부산")';
+      return '도시 이름을 입력해주세요! (예: "Seoul", "Busan", "Jeju")';
     }
     
     try {
@@ -251,9 +251,12 @@ export const travelWeatherTool = new DynamicTool({
         return '🔑 Google Maps API 키가 필요해요! .env.local 파일에 GOOGLE_MAPS_API_KEY를 설정해주세요.\n\n📝 API 키 발급 방법:\n1. Google Cloud Console에서 프로젝트 생성\n2. Geocoding API와 Weather API 활성화\n3. API 키 생성 및 설정';
       }
 
+      // 한국 도시명을 영어로 변환
+      const translatedCity = translateKoreanCity(city);
+      
       // 1단계: 도시명을 좌표로 변환 (Google Geocoding API)
       const geocodingResponse = await fetch(
-        `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(city)}&key=${process.env.GOOGLE_MAPS_API_KEY}&language=ko&region=kr`
+        `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(translatedCity)}&key=${process.env.GOOGLE_MAPS_API_KEY}&language=en&region=kr`
       );
       
       if (!geocodingResponse.ok) {
@@ -267,7 +270,7 @@ export const travelWeatherTool = new DynamicTool({
       }
       
       if (geocodingData.status === 'ZERO_RESULTS') {
-        return `📍 "${city}" 도시를 찾을 수 없어요. 정확한 도시명을 입력해주세요!`;
+        return `📍 "${city}" (${translatedCity}) 도시를 찾을 수 없어요. 정확한 도시명을 입력해주세요!\n\n💡 한국 도시는 영어로 시도해보세요:\n- Seoul (서울)\n- Busan (부산)\n- Jeju (제주)`;
       }
       
       if (!geocodingData.results || geocodingData.results.length === 0) {
@@ -288,7 +291,9 @@ export const travelWeatherTool = new DynamicTool({
         if (weatherResponse.status === 401) {
           return '🚫 Google Weather API 키가 유효하지 않습니다. API 키를 확인해주세요.';
         } else if (weatherResponse.status === 404) {
-          return `📍 "${city}" 지역의 날씨 정보를 찾을 수 없어요.`;
+          return `📍 "${city}" (${translatedCity}) 지역의 날씨 정보를 찾을 수 없어요.\n\n⚠️ Google Weather API는 한국 지역을 지원하지 않습니다.\n다른 나라 도시를 시도해보세요! (예: Tokyo, Paris, New York)`;
+        } else if (weatherResponse.status === 403) {
+          return `🚫 "${city}" (${translatedCity}) 지역은 Google Weather API에서 지원하지 않습니다.\n\n⚠️ 한국, 일본 등 일부 지역은 제한됩니다.\n다른 나라 도시를 시도해보세요!`;
         }
         throw new Error(`Weather API 호출 실패: ${weatherResponse.status} ${weatherResponse.statusText}`);
       }
@@ -371,6 +376,50 @@ function getTravelTip(condition: string): string {
     '비': '우산과 방수용품을 꼭 챙겨! 실내 활동을 추천해~ (05o0)'
   };
   return tips[condition] || '날씨 변화에 대비해서 옷을 여러 벌 준비해줘! (V)';
+}
+
+function translateKoreanCity(city: string): string {
+  const cityTranslations: Record<string, string> = {
+    '서울': 'Seoul',
+    '부산': 'Busan',
+    '대구': 'Daegu',
+    '인천': 'Incheon',
+    '광주': 'Gwangju',
+    '대전': 'Daejeon',
+    '울산': 'Ulsan',
+    '세종': 'Sejong',
+    '경기': 'Gyeonggi',
+    '강원': 'Gangwon',
+    '충북': 'Chungbuk',
+    '충남': 'Chungnam',
+    '전북': 'Jeonbuk',
+    '전남': 'Jeonnam',
+    '경북': 'Gyeongbuk',
+    '경남': 'Gyeongnam',
+    '제주': 'Jeju',
+    '수원': 'Suwon',
+    '성남': 'Seongnam',
+    '고양': 'Goyang',
+    '용인': 'Yongin',
+    '청주': 'Cheongju',
+    '천안': 'Cheonan',
+    '전주': 'Jeonju',
+    '안산': 'Ansan',
+    '안양': 'Anyang',
+    '포항': 'Pohang',
+    '창원': 'Changwon',
+    '마산': 'Masan',
+    '진주': 'Jinju',
+    '여수': 'Yeosu',
+    '순천': 'Suncheon',
+    '김해': 'Gimhae',
+    '춘천': 'Chuncheon',
+    '원주': 'Wonju',
+    '강릉': 'Gangneung',
+    '속초': 'Sokcho'
+  };
+  
+  return cityTranslations[city] || city;
 }
 
 export const allTools = [
