@@ -70,27 +70,38 @@ export const placeSearchTool = new DynamicTool({
       }
 
       // Google Places API 호출
-      if (process.env.GOOGLE_MAPS_API_KEY) {
-        const query = `${location} ${getCategoryKeyword(category)}`;
-        const response = await fetch(
-          `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query)}&key=${process.env.GOOGLE_MAPS_API_KEY}&language=ko&region=kr`
-        );
-        
-        if (response.ok) {
-          const data: GooglePlacesResponse = await response.json();
-          
-          if (data.results && data.results.length > 0) {
-            return data.results.slice(0, 5).map((place: PlaceResult, index: number) => 
-              `${index + 1}. ${place.name}\n   주소: ${place.formatted_address}\n   평점: ${place.rating || 'N/A'} ⭐\n   가격대: ${place.price_level ? '💰'.repeat(place.price_level) : 'N/A'}`
-            ).join('\n\n');
-          }
-        }
+      if (!process.env.GOOGLE_MAPS_API_KEY) {
+        return '🔑 Google Maps API 키가 필요해요! .env.local 파일에 GOOGLE_MAPS_API_KEY를 설정해주세요.\n\n📝 API 키 발급 방법:\n1. Google Cloud Console에서 프로젝트 생성\n2. Places API 활성화\n3. API 키 생성 및 설정';
+      }
+
+      const query = `${location} ${getCategoryKeyword(category)}`;
+      const response = await fetch(
+        `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query)}&key=${process.env.GOOGLE_MAPS_API_KEY}&language=ko&region=kr`
+      );
+      
+      if (!response.ok) {
+        throw new Error(`API 호출 실패: ${response.status} ${response.statusText}`);
+      }
+
+      const data: GooglePlacesResponse = await response.json();
+      
+      if (data.status === 'REQUEST_DENIED') {
+        return '🚫 Google Places API 키가 유효하지 않거나 권한이 없습니다. API 키를 확인해주세요.';
       }
       
-      // API 키가 없거나 실패 시 Mock 데이터 사용
-      return getMockPlaceData(location, category);
-    } catch {
-      return getMockPlaceData(input.split(',')[0] || '서울', input.split(',')[1] || '관광지');
+      if (data.status === 'ZERO_RESULTS') {
+        return `📍 "${location}"에서 "${category}" 관련 장소를 찾을 수 없었어요. 다른 지역이나 카테고리를 시도해보세요!`;
+      }
+      
+      if (data.results && data.results.length > 0) {
+        return `📍 ${location} ${category} 실시간 검색 결과! 🔥\n\n` + data.results.slice(0, 5).map((place: PlaceResult, index: number) => 
+          `${index + 1}. ${place.name}\n   📍 주소: ${place.formatted_address}\n   ⭐ 평점: ${place.rating || 'N/A'}\n   💰 가격대: ${place.price_level ? '💰'.repeat(place.price_level) : 'N/A'}`
+        ).join('\n\n');
+      } else {
+        return `📍 "${location}"에서 "${category}" 관련 장소를 찾을 수 없었어요. 검색어를 다시 확인해보세요!`;
+      }
+    } catch (error) {
+      return `❌ 장소 검색 중 오류가 발생했어요: ${error instanceof Error ? error.message : '알 수 없는 오류'}\n\n🔧 문제 해결:\n1. API 키 확인\n2. 인터넷 연결 확인\n3. 검색어 다시 입력`;
     }
   },
 });
@@ -108,25 +119,36 @@ export const distanceCalculatorTool = new DynamicTool({
 
     try {
       // Google Distance Matrix API 호출
-      if (process.env.GOOGLE_MAPS_API_KEY) {
-        const response = await fetch(
-          `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${encodeURIComponent(origin)}&destinations=${encodeURIComponent(destination)}&mode=${mode}&key=${process.env.GOOGLE_MAPS_API_KEY}&language=ko&region=kr`
-        );
-        
-        if (response.ok) {
-          const data: GoogleDistanceResponse = await response.json();
-          
-          if (data.rows && data.rows[0]?.elements[0]?.status === 'OK') {
-            const element = data.rows[0].elements[0];
-            return `🚗 ${origin} → ${destination}\n거리: ${element.distance.text}\n소요시간: ${element.duration.text}\n교통수단: ${getTransportIcon(mode)} ${mode}`;
-          }
-        }
+      if (!process.env.GOOGLE_MAPS_API_KEY) {
+        return '🔑 Google Maps API 키가 필요해요! .env.local 파일에 GOOGLE_MAPS_API_KEY를 설정해주세요.\n\n📝 API 키 발급 방법:\n1. Google Cloud Console에서 프로젝트 생성\n2. Distance Matrix API 활성화\n3. API 키 생성 및 설정';
+      }
+
+      const response = await fetch(
+        `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${encodeURIComponent(origin)}&destinations=${encodeURIComponent(destination)}&mode=${mode}&key=${process.env.GOOGLE_MAPS_API_KEY}&language=ko&region=kr`
+      );
+      
+      if (!response.ok) {
+        throw new Error(`API 호출 실패: ${response.status} ${response.statusText}`);
+      }
+
+      const data: GoogleDistanceResponse = await response.json();
+      
+      if (data.status === 'REQUEST_DENIED') {
+        return '🚫 Google Distance Matrix API 키가 유효하지 않거나 권한이 없습니다. API 키를 확인해주세요.';
       }
       
-      // API 키가 없거나 실패 시 Mock 데이터 사용
-      return getMockDistanceData(origin, destination, mode);
-    } catch {
-      return getMockDistanceData(origin, destination, mode);
+      if (data.rows && data.rows[0]?.elements[0]?.status === 'OK') {
+        const element = data.rows[0].elements[0];
+        return `🚗 ${origin} → ${destination} 실시간 경로 정보! 🔥\n📏 거리: ${element.distance.text}\n⏱️ 소요시간: ${element.duration.text}\n🚚 교통수단: ${getTransportIcon(mode)} ${mode}`;
+      } else if (data.rows && data.rows[0]?.elements[0]?.status === 'NOT_FOUND') {
+        return `📍 "${origin}" 또는 "${destination}"을 찾을 수 없어요. 정확한 지명을 입력해주세요!`;
+      } else if (data.rows && data.rows[0]?.elements[0]?.status === 'ZERO_RESULTS') {
+        return `🚫 "${origin}"에서 "${destination}"까지 ${mode} 경로를 찾을 수 없어요. 다른 교통수단을 시도해보세요!`;
+      } else {
+        return `❌ 경로 계산 중 문제가 발생했어요. 지명을 다시 확인해주세요!`;
+      }
+    } catch (error) {
+      return `❌ 거리 계산 중 오류가 발생했어요: ${error instanceof Error ? error.message : '알 수 없는 오류'}\n\n🔧 문제 해결:\n1. API 키 확인\n2. 인터넷 연결 확인\n3. 지명 정확히 입력`;
     }
   },
 });
@@ -235,30 +257,40 @@ export const travelWeatherTool = new DynamicTool({
   func: async (input: string) => {
     const city = input.trim();
     
+    if (!city) {
+      return '도시 이름을 입력해주세요! (예: "서울" 또는 "부산")';
+    }
+    
     try {
       // OpenWeatherMap API 호출
-      if (process.env.OPENWEATHER_API_KEY) {
-        const response = await fetch(
-          `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&appid=${process.env.OPENWEATHER_API_KEY}&units=metric&lang=kr`
-        );
-        
-        if (response.ok) {
-          const data: WeatherData = await response.json();
-          
-          const temp = Math.round(data.main.temp);
-          const condition = data.weather[0]?.description || '정보 없음';
-          const humidity = data.main.humidity;
-          const windSpeed = Math.round(data.wind.speed * 3.6); // m/s to km/h
-          const windDirection = getWindDirection(data.wind.deg);
-          
-          return `🌤️ ${city} 날씨 정보야! (V)\n🌡️ 기온: ${temp}°C\n☁️ 날씨: ${condition}\n💧 습도: ${humidity}%\n💨 바람: ${windDirection} ${windSpeed}km/h\n\n📝 여행 팁: ${getTravelTip(condition)}`;
-        }
+      if (!process.env.OPENWEATHER_API_KEY) {
+        return '🔑 OpenWeatherMap API 키가 필요해요! .env.local 파일에 OPENWEATHER_API_KEY를 설정해주세요.\n\n📝 API 키 발급 방법:\n1. OpenWeatherMap.org에서 무료 계정 생성\n2. API 키 발급\n3. .env.local 파일에 추가';
       }
+
+      const response = await fetch(
+        `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&appid=${process.env.OPENWEATHER_API_KEY}&units=metric&lang=kr`
+      );
       
-      // API 키가 없거나 실패 시 Mock 데이터 사용
-      return getMockWeatherData(city);
-    } catch {
-      return getMockWeatherData(city);
+      if (!response.ok) {
+        if (response.status === 401) {
+          return '🚫 OpenWeatherMap API 키가 유효하지 않습니다. API 키를 확인해주세요.';
+        } else if (response.status === 404) {
+          return `📍 "${city}" 도시를 찾을 수 없어요. 정확한 도시명을 입력해주세요!`;
+        }
+        throw new Error(`API 호출 실패: ${response.status} ${response.statusText}`);
+      }
+
+      const data: WeatherData = await response.json();
+      
+      const temp = Math.round(data.main.temp);
+      const condition = data.weather[0]?.description || '정보 없음';
+      const humidity = data.main.humidity;
+      const windSpeed = Math.round(data.wind.speed * 3.6); // m/s to km/h
+      const windDirection = getWindDirection(data.wind.deg);
+      
+      return `🌤️ ${city} 실시간 날씨 정보! 🔥\n🌡️ 기온: ${temp}°C\n☁️ 날씨: ${condition}\n💧 습도: ${humidity}%\n💨 바람: ${windDirection} ${windSpeed}km/h\n\n📝 여행 팁: ${getTravelTip(condition)}`;
+    } catch (error) {
+      return `❌ 날씨 정보 조회 중 오류가 발생했어요: ${error instanceof Error ? error.message : '알 수 없는 오류'}\n\n🔧 문제 해결:\n1. API 키 확인\n2. 인터넷 연결 확인\n3. 도시명 정확히 입력`;
     }
   },
 });
@@ -283,103 +315,11 @@ function getWindDirection(degree: number): string {
   return directions[index];
 }
 
-function getMockWeatherData(city: string): string {
-  const weatherData: Record<string, { temp: string; condition: string; humidity: string; wind: string; uv: string }> = {
-    '서울': { temp: '22°C', condition: '맑음', humidity: '55%', wind: '북서풍 3m/s', uv: '보통' },
-    '부산': { temp: '25°C', condition: '구름많음', humidity: '70%', wind: '남동풍 2m/s', uv: '높음' },
-    '제주': { temp: '24°C', condition: '맑음', humidity: '65%', wind: '동풍 4m/s', uv: '높음' },
-    '강릉': { temp: '20°C', condition: '흐림', humidity: '60%', wind: '동풍 5m/s', uv: '낮음' },
-    '경주': { temp: '23°C', condition: '맑음', humidity: '58%', wind: '서풍 2m/s', uv: '보통' },
-  };
-  
-  const weather = weatherData[city];
-  
-  if (weather) {
-    return `🌤️ ${city} 날씨 정보야! (V)\n🌡️ 기온: ${weather.temp}\n☁️ 날씨: ${weather.condition}\n💧 습도: ${weather.humidity}\n💨 바람: ${weather.wind}\n☀️ 자외선: ${weather.uv}\n\n📝 여행 팁: ${getTravelTip(weather.condition)}`;
-  } else {
-    return `${city}의 날씨 정보를 찾을 수 없어~ (035) 지원되는 도시: 서울, 부산, 제주, 강릉, 경주`;
-  }
-}
 
-function getMockPlaceData(location: string, category: string): string {
-  const mockData: Record<string, Record<string, string[]>> = {
-    '서울': {
-      '관광지': [
-        '경복궁 - 조선왕조의 대표 궁궐 ⭐4.5',
-        '명동 - 쇼핑과 먹거리의 천국 ⭐4.2',
-        'N서울타워 - 서울의 상징적 랜드마크 ⭐4.3',
-        '인사동 - 전통문화 거리 ⭐4.4',
-        '한강공원 - 시민들의 휴식공간 ⭐4.6'
-      ],
-      '맛집': [
-        '미슐랭 가이드 한식당 - 전통 한식 코스 💰💰💰',
-        '명동교자 - 유명 만두집 💰💰',
-        '광장시장 - 전통 시장 먹거리 💰',
-        '강남 고기집 - 프리미엄 한우 💰💰💰💰',
-        '홍대 파스타집 - 이탈리안 레스토랑 💰💰'
-      ],
-      '숙박': [
-        '롯데호텔 서울 - 명동 중심가 럭셔리 호텔 💰💰💰💰',
-        '호스텔 코리아 - 홍대 저렴한 게스트하우스 💰',
-        '강남 비즈니스 호텔 - 접근성 좋은 비즈니스 호텔 💰💰💰',
-        '인사동 한옥스테이 - 전통 한옥 체험 💰💰',
-        '한강뷰 펜션 - 한강이 보이는 펜션 💰💰'
-      ]
-    },
-    '부산': {
-      '관광지': [
-        '해운대 해수욕장 - 부산 대표 해변 ⭐4.7',
-        '감천문화마을 - 컬러풀한 산동네 ⭐4.4',
-        '자갈치시장 - 신선한 해산물 시장 ⭐4.3',
-        '태종대 - 절경 명소 ⭐4.5',
-        '광안리 해변 - 야경이 아름다운 해변 ⭐4.6'
-      ],
-      '맛집': [
-        '자갈치 횟집 - 신선한 회 전문 💰💰💰',
-        '부산 돼지국밥 - 부산 향토 음식 💰',
-        '해운대 복국집 - 복어 전문점 💰💰💰',
-        '광안리 카페 - 오션뷰 카페 💰💰',
-        '서면 곱창집 - 부산식 곱창 💰💰'
-      ],
-      '숙박': [
-        '해운대 그랜드 호텔 - 해변가 리조트 호텔 💰💰💰💰',
-        '광안리 비치 호텔 - 바다 전망 호텔 💰💰💰',
-        '서면 비즈니스 호텔 - 교통 편리한 호텔 💰💰',
-        '부산역 근처 모텔 - 저렴한 숙박시설 💰',
-        '감천문화마을 게스트하우스 - 문화마을 체험 💰💰'
-      ]
-    }
-  };
 
-  const locationData = mockData[location];
-  if (locationData && locationData[category]) {
-    return `📍 ${location} ${category} 추천이야! 조아앙~ (V)\n\n` + locationData[category].map((place: string, index: number) => 
-      `${index + 1}. ${place}`
-    ).join('\n');
-  }
 
-  return `📍 ${location}의 ${category} 정보를 준비 중이야! 다른 지역이나 카테고리를 시도해볼까? (035)`;
-}
 
-function getMockDistanceData(origin: string, destination: string, mode: string): string {
-  const distances: Record<string, { distance: string; duration: string; driving: string; transit: string; walking: string }> = {
-    '명동,강남': { distance: '8.5km', duration: '25분', driving: '20분', transit: '35분', walking: '1시간 45분' },
-    '서울,부산': { distance: '325km', duration: '3시간 30분', driving: '4시간 10분', transit: '2시간 50분', walking: '72시간' },
-    '강남,인사동': { distance: '6.2km', duration: '18분', driving: '15분', transit: '30분', walking: '1시간 20분' }
-  };
 
-  const key = `${origin},${destination}`;
-  const reverseKey = `${destination},${origin}`;
-  
-  const data = distances[key] || distances[reverseKey];
-  
-  if (data) {
-    const time = data[mode as keyof typeof data] || data.duration;
-    return `🚗 ${origin} → ${destination}\n거리: ${data.distance}\n소요시간: ${time}\n교통수단: ${getTransportIcon(mode)} ${mode}\n\n이 정도면 괜찮지? (V)`;
-  }
-
-  return `🚗 ${origin} → ${destination}\n예상 거리: 계산 중이야~\n소요시간: 계산 중이야~\n교통수단: ${getTransportIcon(mode)} ${mode}\n\n잠시만 기다려줘! (035)`;
-}
 
 function getTransportIcon(mode: string): string {
   const icons: Record<string, string> = {

@@ -86,7 +86,7 @@ export default function Chat() {
             <span className="text-white font-bold text-lg">✈️</span>
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-800">AI 여행 플래너</h1>
+            <h1 className="text-xl font-bold text-gray-800">AI 여행 검색</h1>
             <p className="text-sm text-gray-500">완벽한 여행 계획을 위한 스마트 어시스턴트</p>
           </div>
           <div className="ml-auto">

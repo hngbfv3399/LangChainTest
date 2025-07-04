@@ -1,7 +1,7 @@
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { allTools } from '../../../lib/tools';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 // 여행계획 도구 설명
 const getTravelToolDescriptions = () => {
@@ -14,10 +14,22 @@ export async function POST(req: Request) {
     const messages = body.messages ?? [];
     const currentMessageContent = messages[messages.length - 1].content;
 
-    // API 키 확인
+    // 모든 필요한 API 키 확인
+    const missingKeys = [];
+    
     if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
+      missingKeys.push('GOOGLE_GENERATIVE_AI_API_KEY (Gemini AI용)');
+    }
+    if (!process.env.GOOGLE_MAPS_API_KEY) {
+      missingKeys.push('GOOGLE_MAPS_API_KEY (장소 검색/거리 계산용)');
+    }
+    if (!process.env.OPENWEATHER_API_KEY) {
+      missingKeys.push('OPENWEATHER_API_KEY (날씨 정보용)');
+    }
+    
+    if (missingKeys.length > 0) {
       return new Response(JSON.stringify({
-        message: "🔑 어어! Google AI API 키가 설정 안 되어있어~ .env.local 파일에 GOOGLE_GENERATIVE_AI_API_KEY를 설정해줘! (V)",
+        message: `🔑 다음 API 키들이 설정 안 되어있어~ (035)\n\n누락된 키들:\n${missingKeys.map(key => `- ${key}`).join('\n')}\n\n.env.local 파일에 모든 API 키를 설정해줘! 📝\n자세한 방법은 API_SETUP_GUIDE.md를 참고해줘! (V)`,
         success: false
       }), {
         status: 500,
@@ -88,7 +100,7 @@ ${getTravelToolDescriptions()}
       }
     } else {
       // 일반 여행 상담
-      const travelConsultingPrompt = `안녕! 나는 여행 전문 플래너야~ ✈️ 너의 여행 질문에 도움이 되는 답변을 해줄게! (V)
+      const travelConsultingPrompt = `안녕! 나는 여행 전문 플래너야~ ✈️ 너의 여행 질문에 도움이 되는 답변을 해줄게!
 
 여행 질문: "${currentMessageContent}"
 
@@ -123,20 +135,37 @@ ${getTravelToolDescriptions()}
   } catch (error) {
     console.error('Travel AI error:', error);
     
+    // 디버깅을 위한 상세한 에러 로그
+    if (error instanceof Error) {
+      console.error('Error name:', error.name);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+    }
+    
     // 구체적인 에러 메시지 제공
     let errorMessage = "앗! 여행 계획 서비스에 문제가 생겼어 (035) 조금만 기다려줘!";
     
     if (error instanceof Error) {
-      console.error('Error details:', error.message);
+      // 개발 환경에서는 원본 에러 메시지도 표시
+      const debugInfo = process.env.NODE_ENV === 'development' 
+        ? `\n\n🔍 디버그 정보: ${error.message}` 
+        : '';
       
-      if (error.message.includes('API key') || error.message.includes('authentication')) {
-        errorMessage = "🔑 Google API 키를 확인해줘! .env.local 파일에 올바른 키가 설정되어 있는지 체크해봐~ (V)";
-      } else if (error.message.includes('quota') || error.message.includes('limit')) {
-        errorMessage = "⏰ API 사용량이 다 찼어 0l) 잠시만 기다렸다가 다시 시도해줄래?";
+      if (error.message.includes('API key') || error.message.includes('authentication') || error.message.includes('401')) {
+        errorMessage = "🔑 Google API 키를 확인해줘! .env.local 파일에 올바른 키가 설정되어 있는지 체크해봐~ (V)" + debugInfo;
+      } else if (error.message.includes('quota') || error.message.includes('limit') || error.message.includes('429')) {
+        errorMessage = "⏰ API 사용량이 다 찼어 0l) 잠시만 기다렸다가 다시 시도해줄래?" + debugInfo;
+      } else if (error.message.includes('403') || error.message.includes('REQUEST_DENIED')) {
+        errorMessage = "🚫 API 권한이 없어~ Google Cloud Console에서 Places API가 활성화되어 있는지 확인해줘! (035)" + debugInfo;
+      } else if (error.message.includes('404') || error.message.includes('NOT_FOUND')) {
+        errorMessage = "📍 요청한 정보를 찾을 수 없어~ 검색어를 다시 확인해봐줘! (05°0)" + debugInfo;
       } else if (error.message.includes('network') || error.message.includes('fetch') || error.message.includes('ENOTFOUND')) {
-        errorMessage = "🌐 인터넷 연결이 이상해~ 네트워크 확인해봐줘! (05°0)";
+        errorMessage = "🌐 인터넷 연결이 이상해~ 네트워크 확인해봐줄래?" + debugInfo;
       } else if (error.message.includes('model') || error.message.includes('not found')) {
-        errorMessage = "🤖 AI 모델이랑 연결이 안 돼~ 잠시 후에 다시 시도해줄래? (035)";
+        errorMessage = "🤖 AI 모델이랑 연결이 안 돼~ 잠시 후에 다시 시도해줄래? (035)" + debugInfo;
+      } else {
+        // 알 수 없는 에러의 경우 개발 환경에서 원본 메시지 표시
+        errorMessage = "❌ 알 수 없는 오류가 발생했어~ (035)" + debugInfo;
       }
     }
     
