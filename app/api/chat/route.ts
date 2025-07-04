@@ -17,6 +17,13 @@ export async function POST(req: Request) {
     // 모든 필요한 API 키 확인
     const missingKeys = [];
     
+    // 디버깅: 환경 변수 로드 상태 확인
+    console.log('Environment variables check:');
+    console.log('GOOGLE_GENERATIVE_AI_API_KEY:', process.env.GOOGLE_GENERATIVE_AI_API_KEY ? 'EXISTS' : 'MISSING');
+    console.log('GOOGLE_MAPS_API_KEY:', process.env.GOOGLE_MAPS_API_KEY ? 'EXISTS' : 'MISSING');
+    console.log('OPENWEATHER_API_KEY:', process.env.OPENWEATHER_API_KEY ? 'EXISTS' : 'MISSING');
+    console.log('NODE_ENV:', process.env.NODE_ENV);
+    
     if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
       missingKeys.push('GOOGLE_GENERATIVE_AI_API_KEY (Gemini AI용)');
     }

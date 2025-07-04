@@ -1,4 +1,14 @@
 {
-    "framework": "nextjs"
+  "framework": "nextjs",
+  "functions": {
+    "app/api/chat/route.ts": {
+      "maxDuration": 30
+    }
+  },
+  "env": {
+    "GOOGLE_GENERATIVE_AI_API_KEY": "@google-generative-ai-api-key",
+    "GOOGLE_MAPS_API_KEY": "@google-maps-api-key",
+    "OPENWEATHER_API_KEY": "@openweather-api-key"
   }
+}
   
