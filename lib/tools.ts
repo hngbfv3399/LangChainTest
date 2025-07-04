@@ -58,7 +58,9 @@ export const placeSearchTool = new DynamicTool({
         return '🔑 Google Maps API 키가 필요해요! .env.local 파일에 GOOGLE_MAPS_API_KEY를 설정해주세요.\n\n📝 API 키 발급 방법:\n1. Google Cloud Console에서 프로젝트 생성\n2. Places API 활성화\n3. API 키 생성 및 설정';
       }
 
-      const query = `${location} ${getCategoryKeyword(category)}`;
+      // 한국어 도시명을 영어로 변환해서 더 정확한 검색
+      const translatedLocation = translateKoreanCity(location);
+      const query = `${translatedLocation} ${getCategoryKeyword(category)}`;
       const response = await fetch(
         `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query)}&key=${process.env.GOOGLE_MAPS_API_KEY}&language=ko&region=kr`
       );
@@ -107,8 +109,11 @@ export const distanceCalculatorTool = new DynamicTool({
         return '🔑 Google Maps API 키가 필요해요! .env.local 파일에 GOOGLE_MAPS_API_KEY를 설정해주세요.\n\n📝 API 키 발급 방법:\n1. Google Cloud Console에서 프로젝트 생성\n2. Distance Matrix API 활성화\n3. API 키 생성 및 설정';
       }
 
+      // 한국어 지명을 영어로 변환해서 더 정확한 검색
+      const translatedOrigin = translateKoreanCity(origin);
+      const translatedDestination = translateKoreanCity(destination);
       const response = await fetch(
-        `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${encodeURIComponent(origin)}&destinations=${encodeURIComponent(destination)}&mode=${mode}&key=${process.env.GOOGLE_MAPS_API_KEY}&language=ko&region=kr`
+        `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${encodeURIComponent(translatedOrigin)}&destinations=${encodeURIComponent(translatedDestination)}&mode=${mode}&key=${process.env.GOOGLE_MAPS_API_KEY}&language=ko&region=kr`
       );
       
       if (!response.ok) {
@@ -125,9 +130,9 @@ export const distanceCalculatorTool = new DynamicTool({
         const element = data.rows[0].elements[0];
         return `🚗 ${origin} → ${destination} 실시간 경로 정보! 🔥\n📏 거리: ${element.distance.text}\n⏱️ 소요시간: ${element.duration.text}\n🚚 교통수단: ${getTransportIcon(mode)} ${mode}`;
       } else if (data.rows && data.rows[0]?.elements[0]?.status === 'NOT_FOUND') {
-        return `📍 "${origin}" 또는 "${destination}"을 찾을 수 없어요. 정확한 지명을 입력해주세요!`;
+        return `📍 "${origin}" 또는 "${destination}"을 찾을 수 없어요. 정확한 지명을 입력해주세요!\n🔍 검색어: ${translatedOrigin} ↔ ${translatedDestination}`;
       } else if (data.rows && data.rows[0]?.elements[0]?.status === 'ZERO_RESULTS') {
-        return `🚫 "${origin}"에서 "${destination}"까지 ${mode} 경로를 찾을 수 없어요. 다른 교통수단을 시도해보세요!`;
+        return `🚫 "${origin}"에서 "${destination}"까지 ${mode} 경로를 찾을 수 없어요. 다른 교통수단을 시도해보세요!\n🔍 검색어: ${translatedOrigin} ↔ ${translatedDestination}`;
       } else {
         return `❌ 경로 계산 중 문제가 발생했어요. 지명을 다시 확인해주세요!`;
       }
@@ -380,6 +385,7 @@ function getTravelTip(condition: string): string {
 
 function translateKoreanCity(city: string): string {
   const cityTranslations: Record<string, string> = {
+    // 광역시/특별시
     '서울': 'Seoul',
     '부산': 'Busan',
     '대구': 'Daegu',
@@ -388,6 +394,8 @@ function translateKoreanCity(city: string): string {
     '대전': 'Daejeon',
     '울산': 'Ulsan',
     '세종': 'Sejong',
+    
+    // 도/지역
     '경기': 'Gyeonggi',
     '강원': 'Gangwon',
     '충북': 'Chungbuk',
@@ -397,6 +405,8 @@ function translateKoreanCity(city: string): string {
     '경북': 'Gyeongbuk',
     '경남': 'Gyeongnam',
     '제주': 'Jeju',
+    
+    // 주요 도시
     '수원': 'Suwon',
     '성남': 'Seongnam',
     '고양': 'Goyang',
@@ -416,7 +426,88 @@ function translateKoreanCity(city: string): string {
     '춘천': 'Chuncheon',
     '원주': 'Wonju',
     '강릉': 'Gangneung',
-    '속초': 'Sokcho'
+    '속초': 'Sokcho',
+    
+    // 추가 도시들
+    '평택': 'Pyeongtaek',
+    '시흥': 'Siheung',
+    '부천': 'Bucheon',
+    '광명': 'Gwangmyeong',
+    '군포': 'Gunpo',
+    '의왕': 'Uiwang',
+    '하남': 'Hanam',
+    '오산': 'Osan',
+    '이천': 'Icheon',
+    '안성': 'Anseong',
+    '의정부': 'Uijeongbu',
+    '동두천': 'Dongducheon',
+    '구리': 'Guri',
+    '남양주': 'Namyangju',
+    '파주': 'Paju',
+    '김포': 'Gimpo',
+    '화성': 'Hwaseong',
+    
+    // 서울 지역명
+    '강남': 'Gangnam Seoul',
+    '홍대': 'Hongdae Seoul',
+    '명동': 'Myeongdong Seoul',
+    '인사동': 'Insadong Seoul',
+    '이태원': 'Itaewon Seoul',
+    '동대문': 'Dongdaemun Seoul',
+    '서대문': 'Seodaemun Seoul',
+    '종로': 'Jongno Seoul',
+    '마포': 'Mapo Seoul',
+    '영등포': 'Yeongdeungpo Seoul',
+    '용산': 'Yongsan Seoul',
+    '성동': 'Seongdong Seoul',
+    '광진': 'Gwangjin Seoul',
+    '동작': 'Dongjak Seoul',
+    '관악': 'Gwanak Seoul',
+    '서초': 'Seocho Seoul',
+    '강동': 'Gangdong Seoul',
+    '송파': 'Songpa Seoul',
+    '강서': 'Gangseo Seoul',
+    '양천': 'Yangcheon Seoul',
+    '구로': 'Guro Seoul',
+    '금천': 'Geumcheon Seoul',
+    '중구': 'Jung-gu Seoul',
+    '성북': 'Seongbuk Seoul',
+    '강북': 'Gangbuk Seoul',
+    '도봉': 'Dobong Seoul',
+    '노원': 'Nowon Seoul',
+    
+    // 부산 지역명
+    '해운대': 'Haeundae Busan',
+    '광안리': 'Gwangalli Busan',
+    '서면': 'Seomyeon Busan',
+    '남포동': 'Nampo-dong Busan',
+    '기장': 'Gijang Busan',
+    
+    // 제주 지역명
+    '제주시': 'Jeju City',
+    '서귀포': 'Seogwipo',
+    '애월': 'Aewol Jeju',
+    '성산': 'Seongsan Jeju',
+    '중문': 'Jungmun Jeju',
+    
+    // 관광지명
+    '경복궁': 'Gyeongbokgung Palace Seoul',
+    '창덕궁': 'Changdeokgung Palace Seoul',
+    '덕수궁': 'Deoksugung Palace Seoul',
+    '남산': 'Namsan Seoul',
+    '한강': 'Han River Seoul',
+    '청계천': 'Cheonggyecheon Seoul',
+    '북촌': 'Bukchon Seoul',
+    '부산역': 'Busan Station',
+    '자갈치시장': 'Jagalchi Market Busan',
+    '감천문화마을': 'Gamcheon Culture Village Busan',
+    '태종대': 'Taejongdae Busan',
+    '한라산': 'Hallasan Jeju',
+    '성산일출봉': 'Seongsan Ilchulbong Jeju',
+    '우도': 'Udo Jeju',
+    '협재해수욕장': 'Hyeopjae Beach Jeju',
+    '동성로': 'Dongseongno Daegu',
+    '팔공산': 'Palgongsan Daegu'
   };
   
   return cityTranslations[city] || city;
