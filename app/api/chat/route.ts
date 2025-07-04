@@ -23,16 +23,18 @@ export async function POST(req: Request) {
     console.log('GOOGLE_MAPS_API_KEY:', process.env.GOOGLE_MAPS_API_KEY ? 'EXISTS' : 'MISSING');
     console.log('NODE_ENV:', process.env.NODE_ENV);
     
+    // 필수 API 키들
     if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
       missingKeys.push('GOOGLE_GENERATIVE_AI_API_KEY (Gemini AI용)');
     }
     if (!process.env.GOOGLE_MAPS_API_KEY) {
-      missingKeys.push('GOOGLE_MAPS_API_KEY (장소 검색/거리 계산용)');
+      missingKeys.push('GOOGLE_MAPS_API_KEY (구글 지도 검색 API용)');
     }
     
+    // 필수 API 키가 없으면 에러
     if (missingKeys.length > 0) {
       return new Response(JSON.stringify({
-        message: `🔑 다음 API 키들이 설정 안 되어있어~ (035)\n\n누락된 키들:\n${missingKeys.map(key => `- ${key}`).join('\n')}\n\n.env.local 파일에 모든 API 키를 설정해줘! 📝\n자세한 방법은 API_SETUP_GUIDE.md를 참고해줘! (V)`,
+        message: `🔑 필수 API 키가 설정 안 되어있어~ (035)\n\n누락된 키들:\n${missingKeys.map(key => `- ${key}`).join('\n')}\n\n.env.local 파일에 API 키를 설정해줘! 📝\n자세한 방법은 API_SETUP_GUIDE.md를 참고해줘! (V)\n\n💡 구글 API로 전 세계 여행 정보를 검색할 수 있어!`,
         success: false
       }), {
         status: 500,
@@ -56,12 +58,23 @@ ${getTravelToolDescriptions()}
 사용자 요청: "${currentMessageContent}"
 
 다음 중 하나로만 응답해줘:
+
+**구글 API 기반 검색 도구들:**
 - place_search:지역명,카테고리 (예: place_search:서울,관광지)
 - distance_calculator:출발지,목적지,교통수단 (예: distance_calculator:명동,강남,driving)
+- travel_weather:도시명 (예: travel_weather:Seoul)
+
+**기본 도구들:**
 - itinerary_manager:저장:날짜:장소:시간 또는 itinerary_manager:조회:날짜 (예: itinerary_manager:저장:2024-01-15:경복궁:09:00)
 - budget_calculator:항목,금액 또는 budget_calculator:합계 (예: budget_calculator:숙박,120000)
-- travel_weather:도시명 (예: travel_weather:제주)
 - none (도구가 필요하지 않은 일반 여행 상담의 경우)
+
+**사용 가이드:**
+- 장소 검색: place_search (맛집, 관광지, 숙박, 카페 등)
+- 거리/시간 계산: distance_calculator (거리, 시간, 교통수단별 경로)
+- 날씨 정보: travel_weather (실시간 날씨, 여행 팁)
+- 일정 관리: itinerary_manager (일정 저장/조회)
+- 예산 계산: budget_calculator (예산 추가/조회)
 
 응답:`;
 
@@ -83,6 +96,12 @@ ${getTravelToolDescriptions()}
       if (tool) {
         finalAnswer = await tool.func(params);
       }
+    } else if (toolDecision.startsWith('travel_weather:')) {
+      const params = toolDecision.replace('travel_weather:', '');
+      const tool = allTools.find(t => t.name === 'travel_weather');
+      if (tool) {
+        finalAnswer = await tool.func(params);
+      }
     } else if (toolDecision.startsWith('itinerary_manager:')) {
       const params = toolDecision.replace('itinerary_manager:', '');
       const tool = allTools.find(t => t.name === 'itinerary_manager');
@@ -92,12 +111,6 @@ ${getTravelToolDescriptions()}
     } else if (toolDecision.startsWith('budget_calculator:')) {
       const params = toolDecision.replace('budget_calculator:', '');
       const tool = allTools.find(t => t.name === 'budget_calculator');
-      if (tool) {
-        finalAnswer = await tool.func(params);
-      }
-    } else if (toolDecision.startsWith('travel_weather:')) {
-      const params = toolDecision.replace('travel_weather:', '');
-      const tool = allTools.find(t => t.name === 'travel_weather');
       if (tool) {
         finalAnswer = await tool.func(params);
       }

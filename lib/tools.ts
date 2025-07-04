@@ -36,12 +36,10 @@ interface TravelMemory {
   [key: string]: ItineraryItem[] | Record<string, number>;
 }
 
-
-
 // 여행 계획 메모리 저장소
 const travelMemory: TravelMemory = {};
 
-// 장소 검색 도구
+// 장소 검색 도구 (Google Places API)
 export const placeSearchTool = new DynamicTool({
   name: 'place_search',
   description: '특정 지역에서 관광지, 맛집, 숙박시설 등을 검색합니다. 형식: "지역명,카테고리" (예: "서울,관광지" 또는 "부산,맛집")',
@@ -92,7 +90,7 @@ export const placeSearchTool = new DynamicTool({
   },
 });
 
-// 거리/시간 계산 도구
+// 거리/시간 계산 도구 (Google Distance Matrix API)
 export const distanceCalculatorTool = new DynamicTool({
   name: 'distance_calculator',
   description: '두 장소 간의 거리와 이동 시간을 계산합니다. 형식: "출발지,목적지,교통수단" (교통수단: driving, transit, walking)',
@@ -239,7 +237,7 @@ export const budgetCalculatorTool = new DynamicTool({
   },
 });
 
-// 날씨 정보 도구 (Google Weather API 사용)
+// 날씨 정보 도구 (Google Weather API)
 export const travelWeatherTool = new DynamicTool({
   name: 'travel_weather',
   description: '여행지의 날씨 정보를 제공합니다. 도시 이름을 입력하세요. (한국 도시는 영어로 입력: Seoul, Busan, Jeju 등)',
@@ -344,12 +342,6 @@ function getWindDirection(degree: number): string {
   const index = Math.round(degree / 45) % 8;
   return directions[index];
 }
-
-
-
-
-
-
 
 function getTransportIcon(mode: string): string {
   const icons: Record<string, string> = {
@@ -513,10 +505,16 @@ function translateKoreanCity(city: string): string {
   return cityTranslations[city] || city;
 }
 
+// 모든 구글 API 기반 도구들
 export const allTools = [
-  placeSearchTool, 
-  distanceCalculatorTool, 
+  placeSearchTool,
+  distanceCalculatorTool,
   itineraryTool, 
-  budgetCalculatorTool, 
+  budgetCalculatorTool,
   travelWeatherTool
-]; 
+];
+
+// 모든 도구 설명을 가져오는 함수
+export function getTravelToolDescriptions(): string {
+  return allTools.map(tool => `- ${tool.name}: ${tool.description}`).join('\n');
+} 

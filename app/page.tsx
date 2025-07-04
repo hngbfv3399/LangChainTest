@@ -108,7 +108,7 @@ export default function Chat() {
               </div>
               <h3 className="text-lg font-semibold text-gray-700 mb-2">여행 계획에 오신 것을 환영합니다! ✈️</h3>
               <p className="text-gray-500 mb-6">AI 여행 플래너와 함께 완벽한 여행을 준비해보세요</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-2xl mx-auto">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-w-4xl mx-auto">
                 <button 
                   onClick={() => setInput('서울 관광지 추천해줘')}
                   className="p-3 bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all text-left"
@@ -117,11 +117,39 @@ export default function Chat() {
                   <div className="text-sm text-gray-500">서울 관광지 추천해줘</div>
                 </button>
                 <button 
-                  onClick={() => setInput('명동에서 강남까지 얼마나 걸려?')}
+                  onClick={() => setInput('명동에서 강남까지 빠른길로 가고 싶어')}
                   className="p-3 bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all text-left"
                 >
-                  <div className="font-medium text-gray-700">🚗 거리/시간</div>
-                  <div className="text-sm text-gray-500">명동에서 강남까지 얼마나 걸려?</div>
+                  <div className="font-medium text-gray-700">🚗 고급 길찾기</div>
+                  <div className="text-sm text-gray-500">명동에서 강남까지 빠른길로 가고 싶어</div>
+                </button>
+                <button 
+                  onClick={() => setInput('제주도 맛집 블로그 포스트 찾아줘')}
+                  className="p-3 bg-white rounded-lg border border-gray-200 hover:border-purple-300 hover:bg-purple-50 transition-all text-left"
+                >
+                  <div className="font-medium text-gray-700">📝 블로그 검색</div>
+                  <div className="text-sm text-gray-500">제주도 맛집 블로그 포스트 찾아줘</div>
+                </button>
+                <button 
+                  onClick={() => setInput('부산 축제 뉴스 검색해줘')}
+                  className="p-3 bg-white rounded-lg border border-gray-200 hover:border-red-300 hover:bg-red-50 transition-all text-left"
+                >
+                  <div className="font-medium text-gray-700">📰 뉴스 검색</div>
+                  <div className="text-sm text-gray-500">부산 축제 뉴스 검색해줘</div>
+                </button>
+                <button 
+                  onClick={() => setInput('여행가방 쇼핑 정보 찾아줘')}
+                  className="p-3 bg-white rounded-lg border border-gray-200 hover:border-green-300 hover:bg-green-50 transition-all text-left"
+                >
+                  <div className="font-medium text-gray-700">🛒 쇼핑 검색</div>
+                  <div className="text-sm text-gray-500">여행가방 쇼핑 정보 찾아줘</div>
+                </button>
+                <button 
+                  onClick={() => setInput('제주도 여행후기 카페 글 찾아줘')}
+                  className="p-3 bg-white rounded-lg border border-gray-200 hover:border-orange-300 hover:bg-orange-50 transition-all text-left"
+                >
+                  <div className="font-medium text-gray-700">☕ 카페 검색</div>
+                  <div className="text-sm text-gray-500">제주도 여행후기 카페 글 찾아줘</div>
                 </button>
                 <button 
                   onClick={() => setInput('저장:2024-01-15:경복궁:09:00')}
@@ -129,13 +157,6 @@ export default function Chat() {
                 >
                   <div className="font-medium text-gray-700">📅 일정 관리</div>
                   <div className="text-sm text-gray-500">여행 일정 저장하기</div>
-                </button>
-                <button 
-                  onClick={() => setInput('제주도 날씨 어때?')}
-                  className="p-3 bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all text-left"
-                >
-                  <div className="font-medium text-gray-700">🌤️ 날씨 정보</div>
-                  <div className="text-sm text-gray-500">제주도 날씨 어때?</div>
                 </button>
                 <button 
                   onClick={() => setInput('숙박비 15만원 추가해줘')}
