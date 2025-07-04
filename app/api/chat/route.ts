@@ -21,7 +21,6 @@ export async function POST(req: Request) {
     console.log('Environment variables check:');
     console.log('GOOGLE_GENERATIVE_AI_API_KEY:', process.env.GOOGLE_GENERATIVE_AI_API_KEY ? 'EXISTS' : 'MISSING');
     console.log('GOOGLE_MAPS_API_KEY:', process.env.GOOGLE_MAPS_API_KEY ? 'EXISTS' : 'MISSING');
-    console.log('OPENWEATHER_API_KEY:', process.env.OPENWEATHER_API_KEY ? 'EXISTS' : 'MISSING');
     console.log('NODE_ENV:', process.env.NODE_ENV);
     
     if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
@@ -29,9 +28,6 @@ export async function POST(req: Request) {
     }
     if (!process.env.GOOGLE_MAPS_API_KEY) {
       missingKeys.push('GOOGLE_MAPS_API_KEY (장소 검색/거리 계산용)');
-    }
-    if (!process.env.OPENWEATHER_API_KEY) {
-      missingKeys.push('OPENWEATHER_API_KEY (날씨 정보용)');
     }
     
     if (missingKeys.length > 0) {

@@ -36,23 +36,7 @@ interface TravelMemory {
   [key: string]: ItineraryItem[] | Record<string, number>;
 }
 
-interface WeatherData {
-  main: {
-    temp: number;
-    humidity: number;
-  };
-  weather: Array<{
-    main: string;
-    description: string;
-  }>;
-  wind: {
-    speed: number;
-    deg: number;
-  };
-  uv?: {
-    value: number;
-  };
-}
+
 
 // 여행 계획 메모리 저장소
 const travelMemory: TravelMemory = {};
@@ -250,7 +234,7 @@ export const budgetCalculatorTool = new DynamicTool({
   },
 });
 
-// 날씨 정보 도구 (실제 API 사용)
+// 날씨 정보 도구 (Google Weather API 사용)
 export const travelWeatherTool = new DynamicTool({
   name: 'travel_weather',
   description: '여행지의 날씨 정보를 제공합니다. 도시 이름을 입력하세요.',
@@ -262,35 +246,71 @@ export const travelWeatherTool = new DynamicTool({
     }
     
     try {
-      // OpenWeatherMap API 호출
-      if (!process.env.OPENWEATHER_API_KEY) {
-        return '🔑 OpenWeatherMap API 키가 필요해요! .env.local 파일에 OPENWEATHER_API_KEY를 설정해주세요.\n\n📝 API 키 발급 방법:\n1. OpenWeatherMap.org에서 무료 계정 생성\n2. API 키 발급\n3. .env.local 파일에 추가';
+      // Google Maps API 키 확인
+      if (!process.env.GOOGLE_MAPS_API_KEY) {
+        return '🔑 Google Maps API 키가 필요해요! .env.local 파일에 GOOGLE_MAPS_API_KEY를 설정해주세요.\n\n📝 API 키 발급 방법:\n1. Google Cloud Console에서 프로젝트 생성\n2. Geocoding API와 Weather API 활성화\n3. API 키 생성 및 설정';
       }
 
-      const response = await fetch(
-        `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&appid=${process.env.OPENWEATHER_API_KEY}&units=metric&lang=kr`
+      // 1단계: 도시명을 좌표로 변환 (Google Geocoding API)
+      const geocodingResponse = await fetch(
+        `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(city)}&key=${process.env.GOOGLE_MAPS_API_KEY}&language=ko&region=kr`
       );
       
-      if (!response.ok) {
-        if (response.status === 401) {
-          return '🚫 OpenWeatherMap API 키가 유효하지 않습니다. API 키를 확인해주세요.';
-        } else if (response.status === 404) {
-          return `📍 "${city}" 도시를 찾을 수 없어요. 정확한 도시명을 입력해주세요!`;
-        }
-        throw new Error(`API 호출 실패: ${response.status} ${response.statusText}`);
+      if (!geocodingResponse.ok) {
+        throw new Error(`Geocoding API 호출 실패: ${geocodingResponse.status} ${geocodingResponse.statusText}`);
       }
 
-      const data: WeatherData = await response.json();
+      const geocodingData = await geocodingResponse.json();
       
-      const temp = Math.round(data.main.temp);
-      const condition = data.weather[0]?.description || '정보 없음';
-      const humidity = data.main.humidity;
-      const windSpeed = Math.round(data.wind.speed * 3.6); // m/s to km/h
-      const windDirection = getWindDirection(data.wind.deg);
+      if (geocodingData.status === 'REQUEST_DENIED') {
+        return '🚫 Google Geocoding API 키가 유효하지 않거나 권한이 없습니다. API 키를 확인해주세요.';
+      }
       
-      return `🌤️ ${city} 실시간 날씨 정보! 🔥\n🌡️ 기온: ${temp}°C\n☁️ 날씨: ${condition}\n💧 습도: ${humidity}%\n💨 바람: ${windDirection} ${windSpeed}km/h\n\n📝 여행 팁: ${getTravelTip(condition)}`;
+      if (geocodingData.status === 'ZERO_RESULTS') {
+        return `📍 "${city}" 도시를 찾을 수 없어요. 정확한 도시명을 입력해주세요!`;
+      }
+      
+      if (!geocodingData.results || geocodingData.results.length === 0) {
+        return `📍 "${city}" 위치 정보를 찾을 수 없어요. 다른 도시명을 시도해보세요!`;
+      }
+
+      const location = geocodingData.results[0].geometry.location;
+      const latitude = location.lat;
+      const longitude = location.lng;
+      const formattedAddress = geocodingData.results[0].formatted_address;
+
+      // 2단계: 좌표로 날씨 정보 조회 (Google Weather API)
+      const weatherResponse = await fetch(
+        `https://weather.googleapis.com/v1/current:lookup?key=${process.env.GOOGLE_MAPS_API_KEY}&location.latitude=${latitude}&location.longitude=${longitude}`
+      );
+      
+      if (!weatherResponse.ok) {
+        if (weatherResponse.status === 401) {
+          return '🚫 Google Weather API 키가 유효하지 않습니다. API 키를 확인해주세요.';
+        } else if (weatherResponse.status === 404) {
+          return `📍 "${city}" 지역의 날씨 정보를 찾을 수 없어요.`;
+        }
+        throw new Error(`Weather API 호출 실패: ${weatherResponse.status} ${weatherResponse.statusText}`);
+      }
+
+      const weatherData = await weatherResponse.json();
+      
+      // Google Weather API 응답 처리
+      const current = weatherData.current;
+      if (!current) {
+        return `❌ "${city}" 지역의 현재 날씨 정보를 가져올 수 없어요.`;
+      }
+
+      const temp = Math.round(current.temperature?.celsius || 0);
+      const condition = current.condition?.description || '정보 없음';
+      const humidity = current.humidity?.percentage || 0;
+      const windSpeed = Math.round((current.wind?.speed?.metersPerSecond || 0) * 3.6); // m/s to km/h
+      const windDirection = getWindDirection(current.wind?.direction?.degrees || 0);
+      const uvIndex = current.uv?.index || 0;
+      
+      return `🌤️ ${formattedAddress} 실시간 날씨 정보! 🔥\n🌡️ 기온: ${temp}°C\n☁️ 날씨: ${condition}\n💧 습도: ${humidity}%\n💨 바람: ${windDirection} ${windSpeed}km/h\n☀️ 자외선 지수: ${uvIndex}\n\n📝 여행 팁: ${getTravelTip(condition)}`;
     } catch (error) {
-      return `❌ 날씨 정보 조회 중 오류가 발생했어요: ${error instanceof Error ? error.message : '알 수 없는 오류'}\n\n🔧 문제 해결:\n1. API 키 확인\n2. 인터넷 연결 확인\n3. 도시명 정확히 입력`;
+      return `❌ 날씨 정보 조회 중 오류가 발생했어요: ${error instanceof Error ? error.message : '알 수 없는 오류'}\n\n🔧 문제 해결:\n1. API 키 확인\n2. 인터넷 연결 확인\n3. 도시명 정확히 입력\n4. Google Cloud Console에서 Geocoding API와 Weather API 활성화 확인`;
     }
   },
 });
