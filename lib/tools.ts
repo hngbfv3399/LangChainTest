@@ -249,9 +249,17 @@ export const placeSearchTool = new DynamicTool({
       
       if (bestResults.length > 0) {
         return `📍 ${location} ${category} **AI 실시간 검색 결과**! 🤖✨\n🔍 AI 검색어: ${searchUsed}\n\n` + 
-          bestResults.slice(0, 5).map((place: PlaceResult, index: number) => 
-            `${index + 1}. **${place.name}**\n   📍 주소: ${place.formatted_address}\n   ⭐ 평점: ${place.rating || 'N/A'}\n   💰 가격대: ${place.price_level ? '💰'.repeat(place.price_level) : 'N/A'}`
-          ).join('\n\n') + `\n\n🤖 **AI가 실시간으로 찾았어요!** 더 정확한 정보가 필요하면 다시 물어보세요! (V)`;
+          bestResults.slice(0, 5).map((place: PlaceResult, index: number) => {
+            // AI가 스마트하게 평점 처리
+            const ratingText = place.rating !== undefined ? 
+              `${place.rating}⭐` : 'N/A';
+            
+            // AI가 스마트하게 가격대 처리
+            const priceText = place.price_level !== undefined ? 
+              (place.price_level === 0 ? '무료/저렴' : '💰'.repeat(place.price_level)) : 'N/A';
+            
+            return `${index + 1}. **${place.name}**\n   📍 주소: ${place.formatted_address}\n   ⭐ 평점: ${ratingText}\n   💰 가격대: ${priceText}`;
+          }).join('\n\n') + `\n\n🤖 **AI가 실시간으로 찾았어요!** 더 정확한 정보가 필요하면 다시 물어보세요! (V)`;
       } else {
         // AI 기반 fallback
         const smartFallback = await getSmartFallbackInfo(location, category);
